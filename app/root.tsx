@@ -46,6 +46,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </ul>
           </nav>
         </div>
+        <div id="detail">{children}</div>
         <ScrollRestoration />
         <Scripts />
       </body>
@@ -53,6 +54,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function App() {
+export default function Root() {
   return <Outlet />;
 }
