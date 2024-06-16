@@ -1,11 +1,12 @@
 import {
+  Form,
   Links,
   Meta,
   Outlet,
   Scripts,
   ScrollRestoration,
 } from "@remix-run/react";
-import "./tailwind.css";
+import "./app.css";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -17,7 +18,34 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
       </head>
       <body>
-        {children}
+        <div id="sidebar">
+          <h1>Remix Contacts</h1>
+          <div>
+            <Form id="search-form" role="search">
+              <input
+                id="q"
+                aria-label="Search contacts"
+                placeholder="Search"
+                type="search"
+                name="q"
+              />
+              <div id="search-spinner" aria-hidden hidden={true} />
+            </Form>
+            <Form method="post">
+              <button type="submit">New</button>
+            </Form>
+          </div>
+          <nav>
+            <ul>
+              <li>
+                <a href={`/contacts/1`}>Your Name</a>
+              </li>
+              <li>
+                <a href={`/contacts/2`}>Your Friend</a>
+              </li>
+            </ul>
+          </nav>
+        </div>
         <ScrollRestoration />
         <Scripts />
       </body>
