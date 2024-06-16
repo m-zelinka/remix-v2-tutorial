@@ -1,18 +1,26 @@
 import {
   json,
+  redirect,
   type ActionFunctionArgs,
   type LoaderFunctionArgs,
+  type MetaFunction,
 } from "@remix-run/node";
-import { Form, redirect, useLoaderData, useNavigate } from "@remix-run/react";
+import { Form, useLoaderData, useNavigate } from "@remix-run/react";
+import type { ReactNode } from "react";
 import invariant from "tiny-invariant";
+import { ErrorPage } from "~/components/error-page";
 import { getContact, updateContact } from "../data";
+
+export const meta: MetaFunction = () => {
+  return [{ title: "Edit contact" }];
+};
 
 export async function loader({ params }: LoaderFunctionArgs) {
   invariant(params.contactId, "Missing contactId param");
   const contact = await getContact(params.contactId);
 
   if (!contact) {
-    throw new Response("Not Found", { status: 404 });
+    throw new Response("", { status: 404, statusText: "Not Found" });
   }
 
   return json({ contact });
@@ -28,9 +36,12 @@ export async function action({ params, request }: ActionFunctionArgs) {
   return redirect(`/contacts/${params.contactId}`);
 }
 
+export function ErrorBoundary() {
+  return <ErrorPage />;
+}
+
 export default function Component() {
   const { contact } = useLoaderData<typeof loader>();
-  const navigate = useNavigate();
 
   return (
     <Form key={contact.id} id="contact-form" method="post">
@@ -76,10 +87,18 @@ export default function Component() {
       </label>
       <p>
         <button type="submit">Save</button>
-        <button onClick={() => navigate(-1)} type="button">
-          Cancel
-        </button>
+        <CancelButton>Cancel</CancelButton>
       </p>
     </Form>
+  );
+}
+
+function CancelButton({ children }: { children?: ReactNode }) {
+  const navigate = useNavigate();
+
+  return (
+    <button type="button" onClick={() => navigate(-1)}>
+      {children}
+    </button>
   );
 }

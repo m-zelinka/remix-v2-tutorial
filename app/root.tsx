@@ -1,4 +1,9 @@
-import { json, redirect, type LoaderFunctionArgs } from "@remix-run/node";
+import {
+  json,
+  redirect,
+  type LoaderFunctionArgs,
+  type MetaFunction,
+} from "@remix-run/node";
 import {
   Form,
   Links,
@@ -7,13 +12,21 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  useFetcher,
   useLoaderData,
   useNavigation,
+  useSearchParams,
   useSubmit,
 } from "@remix-run/react";
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
+import { useSpinDelay } from "spin-delay";
 import "./app.css";
-import { createEmptyContact, getContacts } from "./data";
+import { LoadingOverlay } from "./components/loading-overlay";
+import { createEmptyContact, getContacts, type ContactRecord } from "./data";
+
+export const meta: MetaFunction = () => {
+  return [{ title: "Remix Contacts" }];
+};
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const url = new URL(request.url);
@@ -21,7 +34,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
   const contacts = await getContacts(q);
 
-  return json({ contacts, q });
+  return json({ contacts });
 }
 
 export async function action() {
@@ -31,20 +44,7 @@ export async function action() {
 }
 
 export function Layout({ children }: { children: React.ReactNode }) {
-  const { contacts, q } = useLoaderData<typeof loader>();
-  const navigation = useNavigation();
-  const submit = useSubmit();
-
-  const searching =
-    navigation.location &&
-    new URLSearchParams(navigation.location.search).has("q");
-
-  useEffect(() => {
-    const searchField = document.getElementById("q");
-    if (searchField instanceof HTMLInputElement) {
-      searchField.value = q || "";
-    }
-  }, [q]);
+  const { contacts } = useLoaderData<typeof loader>();
 
   return (
     <html lang="en">
@@ -58,28 +58,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <div id="sidebar">
           <h1>Remix Contacts</h1>
           <div>
-            <Form
-              id="search-form"
-              onChange={(event) => {
-                const isFirstSearch = q === null;
-
-                submit(event.currentTarget, {
-                  replace: !isFirstSearch,
-                });
-              }}
-              role="search"
-            >
-              <input
-                id="q"
-                defaultValue={q || ""}
-                aria-label="Search contacts"
-                className={searching ? "loading" : ""}
-                placeholder="Search"
-                type="search"
-                name="q"
-              />
-              <div id="search-spinner" aria-hidden hidden={!searching} />
-            </Form>
+            <SearchBar />
             <Form method="post">
               <button type="submit">New</button>
             </Form>
@@ -90,10 +69,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 {contacts.map((contact) => (
                   <li key={contact.id}>
                     <NavLink
+                      to={`contacts/${contact.id}`}
+                      prefetch="intent"
                       className={({ isActive, isPending }) =>
                         isActive ? "active" : isPending ? "pending" : ""
                       }
-                      to={`contacts/${contact.id}`}
                     >
                       {contact.first || contact.last ? (
                         <>
@@ -102,7 +82,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
                       ) : (
                         <i>No Name</i>
                       )}{" "}
-                      {contact.favorite ? <span>★</span> : null}
+                      <Favorite contact={contact}>
+                        <span>★</span>
+                      </Favorite>
                     </NavLink>
                   </li>
                 ))}
@@ -114,13 +96,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
             )}
           </nav>
         </div>
-        <div
-          id="detail"
-          className={
-            navigation.state === "loading" && !searching ? "loading" : ""
-          }
-        >
-          {children}
+        <div id="detail">
+          <LoadingOverlay>{children}</LoadingOverlay>
         </div>
         <ScrollRestoration />
         <Scripts />
@@ -131,4 +108,65 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
 export default function Root() {
   return <Outlet />;
+}
+
+function SearchBar() {
+  const [searchParams] = useSearchParams();
+  const q = searchParams.get("q");
+
+  const navigation = useNavigation();
+  const searching = new URLSearchParams(navigation.location?.search).has("q");
+  const showSpinner = useSpinDelay(searching);
+
+  // Used to submit the form for every keystroke
+  const submit = useSubmit();
+
+  // Sync input value with the URL Search Params
+  useEffect(() => {
+    const searchField = document.getElementById("q");
+    if (searchField instanceof HTMLInputElement) {
+      searchField.value = q || "";
+    }
+  }, [q]);
+
+  return (
+    <Form id="search-form" role="search">
+      <input
+        id="q"
+        className={showSpinner ? "loading" : undefined}
+        aria-label="Search contacts"
+        placeholder="Search"
+        type="search"
+        name="q"
+        defaultValue={q ?? undefined}
+        onChange={(event) => {
+          const isFirstSearch = q === null;
+
+          submit(event.currentTarget.form, {
+            replace: !isFirstSearch,
+          });
+        }}
+      />
+      <div id="search-spinner" aria-hidden hidden={!showSpinner} />
+    </Form>
+  );
+}
+
+function Favorite({
+  contact,
+  children,
+}: {
+  contact: Pick<ContactRecord, "id" | "favorite">;
+  children?: ReactNode;
+}) {
+  const fetcher = useFetcher({ key: `contact:${contact.id}` });
+  const favorite = fetcher.formData
+    ? fetcher.formData.get("favorite") === "true"
+    : contact.favorite;
+
+  if (!favorite) {
+    return null;
+  }
+
+  return children;
 }

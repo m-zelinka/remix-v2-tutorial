@@ -2,17 +2,32 @@ import {
   json,
   type ActionFunctionArgs,
   type LoaderFunctionArgs,
+  type MetaFunction,
 } from "@remix-run/node";
 import { Form, useFetcher, useLoaderData } from "@remix-run/react";
 import invariant from "tiny-invariant";
+import { ErrorPage } from "~/components/error-page";
 import { getContact, updateContact, type ContactRecord } from "../data";
+
+export const meta: MetaFunction<typeof loader> = ({ data }) => {
+  const { title } = data
+    ? {
+        title:
+          data.contact.first || data.contact.last
+            ? `${data.contact.first} ${data.contact.last}`
+            : "No Name",
+      }
+    : { title: "Not Found" };
+
+  return [{ title }];
+};
 
 export async function loader({ params }: LoaderFunctionArgs) {
   invariant(params.contactId, "Missing contactId param");
   const contact = await getContact(params.contactId);
 
   if (!contact) {
-    throw new Response("Not Found", { status: 404 });
+    throw new Response("", { status: 404, statusText: "Not Found" });
   }
 
   return json({ contact });
@@ -20,11 +35,18 @@ export async function loader({ params }: LoaderFunctionArgs) {
 
 export async function action({ params, request }: ActionFunctionArgs) {
   const formData = await request.formData();
+  const favorite = formData.get("favorite");
 
   invariant(params.contactId, "Missing contactId param");
-  return updateContact(params.contactId, {
-    favorite: formData.get("favorite") === "true",
+  await updateContact(params.contactId, {
+    favorite: favorite === "true",
   });
+
+  return { ok: true };
+}
+
+export function ErrorBoundary() {
+  return <ErrorPage />;
 }
 
 export default function Component() {
@@ -32,16 +54,14 @@ export default function Component() {
 
   return (
     <div id="contact">
-      <div>
-        <img
-          alt={`${contact.first} ${contact.last} avatar`}
-          key={contact.avatar}
-          src={
-            contact.avatar ||
-            `https://robohash.org/${contact.id}.png?size=200x200`
-          }
-        />
-      </div>
+      <img
+        key={contact.avatar}
+        src={
+          contact.avatar ||
+          `https://robohash.org/${contact.id}.png?size=200x200`
+        }
+        alt=""
+      />
       <div>
         <h1>
           {contact.first || contact.last ? (
@@ -66,13 +86,14 @@ export default function Component() {
             <button type="submit">Edit</button>
           </Form>
           <Form
-            action="destroy"
             method="post"
+            action="destroy"
             onSubmit={(event) => {
-              const response = confirm(
+              const shouldDelete = confirm(
                 "Please confirm you want to delete this record."
               );
-              if (!response) {
+
+              if (!shouldDelete) {
                 event.preventDefault();
               }
             }}
@@ -85,8 +106,12 @@ export default function Component() {
   );
 }
 
-function Favorite({ contact }: { contact: Pick<ContactRecord, "favorite"> }) {
-  const fetcher = useFetcher();
+function Favorite({
+  contact,
+}: {
+  contact: Pick<ContactRecord, "id" | "favorite">;
+}) {
+  const fetcher = useFetcher({ key: `contact:${contact.id}` });
   const favorite = fetcher.formData
     ? fetcher.formData.get("favorite") === "true"
     : contact.favorite;
@@ -94,9 +119,9 @@ function Favorite({ contact }: { contact: Pick<ContactRecord, "favorite"> }) {
   return (
     <fetcher.Form method="post">
       <button
-        aria-label={favorite ? "Remove from favorites" : "Add to favorites"}
         name="favorite"
         value={favorite ? "false" : "true"}
+        aria-label={favorite ? "Remove from favorites" : "Add to favorites"}
       >
         {favorite ? "★" : "☆"}
       </button>
