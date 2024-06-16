@@ -10,12 +10,18 @@ import {
   useLoaderData,
 } from "@remix-run/react";
 import "./app.css";
-import { getContacts } from "./data";
+import { createEmptyContact, getContacts } from "./data";
 
 export async function loader() {
   const contacts = await getContacts();
 
   return json({ contacts });
+}
+
+export async function action() {
+  const contact = await createEmptyContact();
+
+  return json({ contact });
 }
 
 export function Layout({ children }: { children: React.ReactNode }) {
