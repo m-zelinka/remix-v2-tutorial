@@ -1,3 +1,4 @@
+import { json } from "@remix-run/node";
 import {
   Form,
   Link,
@@ -6,7 +7,6 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
-  json,
   useLoaderData,
 } from "@remix-run/react";
 import "./app.css";

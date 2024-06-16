@@ -1,5 +1,8 @@
-import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
-import { json } from "@remix-run/node";
+import {
+  json,
+  type ActionFunctionArgs,
+  type LoaderFunctionArgs,
+} from "@remix-run/node";
 import { Form, redirect, useLoaderData } from "@remix-run/react";
 import invariant from "tiny-invariant";
 import { getContact, updateContact } from "../data";
