@@ -8,6 +8,7 @@ import {
   Scripts,
   ScrollRestoration,
   useLoaderData,
+  useNavigation,
 } from "@remix-run/react";
 import "./app.css";
 import { createEmptyContact, getContacts } from "./data";
@@ -26,6 +27,7 @@ export async function action() {
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const { contacts } = useLoaderData<typeof loader>();
+  const navigation = useNavigation();
 
   return (
     <html lang="en">
@@ -83,7 +85,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
             )}
           </nav>
         </div>
-        <div id="detail">{children}</div>
+        <div
+          id="detail"
+          className={navigation.state === "loading" ? "loading" : ""}
+        >
+          {children}
+        </div>
         <ScrollRestoration />
         <Scripts />
       </body>
