@@ -121,11 +121,11 @@ function SearchBar() {
   // Used to submit the form for every keystroke
   const submit = useSubmit();
 
-  // Sync input value with the URL Search Params
+  // Sync search input value with the URL Search Params
   useEffect(() => {
     const searchField = document.getElementById("q");
     if (searchField instanceof HTMLInputElement) {
-      searchField.value = q || "";
+      searchField.value = q ?? "";
     }
   }, [q]);
 
